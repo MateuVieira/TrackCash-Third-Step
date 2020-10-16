@@ -1,5 +1,9 @@
 # TrackCash-Third-Step
 
+<h1 align="center">
+  <img alt="Fastfeet" title="Fastfeet" src="https://scontent-gru2-2.cdninstagram.com/v/t51.2885-19/s320x320/75487952_484171055518655_7311530687218057216_n.jpg?_nc_ht=scontent-gru2-2.cdninstagram.com&_nc_ohc=099peI-odLgAX_zbfBM&oh=29e463dac08cd8f05f4b2511dbc85bbf&oe=5FB200AE" width="300px" />
+</h1>
+
 ### Tech
 
 Este projeto foi feito utilizando as seguintes tecnologias:
