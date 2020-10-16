@@ -3,15 +3,19 @@ import Constants
 
 
 def verifyConciliacao(data):
+  # Set payment way
   paymentWay = data[Constants.DATA_KEY_PAYMENT_WAY]
 
+  # First check - payment method is "Cartão de Crédito" or "Boleto"
   if paymentWay == Constants.PAYMENT_WAY_BOLETO or paymentWay == Constants.PAYMENT_WAY_CARD:
     calcConciliacao = data[Constants.DATA_KEY_GROSS_AMOUNT] * data[Constants.DATA_KEY_COMMISSION]
     return Constants.CONCILIATION_OPTION_CONCILIATED if calcConciliacao > 0 else Constants.CONCILIATION_OPTION_NOT_CONCILIATED
 
+  # Second check - payment method is "Estorno"
   if paymentWay == Constants.PAYMENT_WAY_ESTORNO:
     return Constants.CONCILIATION_OPTION_CONCILIATED if data[Constants.DATA_KEY_NET_VALUE] > 0 else Constants.CONCILIATION_OPTION_NOT_CONCILIATED
 
+  # Third check - payment method is "Transferência"
   if paymentWay == Constants.PAYMENT_WAY_TRANSFERENCIA:
     return Constants.CONCILIATION_OPTION_WITHDRAWAL if data[Constants.DATA_KEY_ANTICIPATION_VALUE] > 0 else Constants.CONCILIATION_OPTION_MOVEMENT
 
