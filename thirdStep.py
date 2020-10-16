@@ -1,17 +1,19 @@
 import pandas as pd
+import Constants
+
 
 def verifyConciliacao(data):
-  paymentWay = data['Método de pagamento']
+  paymentWay = data[Constants.DATA_KEY_PAYMENT_WAY]
 
-  if paymentWay == 'Boleto' or paymentWay == 'Cartão de Crédito':
-    calcConciliacao = data['Valor bruto da parcela'] * data['% Comissão']
-    return 'Conciliado' if calcConciliacao > 0 else 'Não Conciliado'
+  if paymentWay == Constants.PAYMENT_WAY_BOLETO or paymentWay == Constants.PAYMENT_WAY_CARD:
+    calcConciliacao = data[Constants.DATA_KEY_GROSS_AMOUNT] * data[Constants.DATA_KEY_COMMISSION]
+    return Constants.CONCILIATION_OPTION_CONCILIATED if calcConciliacao > 0 else Constants.CONCILIATION_OPTION_NOT_CONCILIATED
 
-  if paymentWay == 'Estorno':
-    return 'Conciliado' if data['Valor líquido da parcela'] > 0 else 'Não Conciliado'
+  if paymentWay == Constants.PAYMENT_WAY_ESTORNO:
+    return Constants.CONCILIATION_OPTION_CONCILIATED if data[Constants.DATA_KEY_NET_VALUE] > 0 else Constants.CONCILIATION_OPTION_NOT_CONCILIATED
 
-  if paymentWay == 'Transferência':
-    return 'Retirada' if data['Valor da antecipação'] > 0 else 'Movimentação'
+  if paymentWay == Constants.PAYMENT_WAY_TRANSFERENCIA:
+    return Constants.CONCILIATION_OPTION_WITHDRAWAL if data[Constants.DATA_KEY_ANTICIPATION_VALUE] > 0 else Constants.CONCILIATION_OPTION_MOVEMENT
 
 def createColumnConciliacao(data):
 
@@ -20,92 +22,106 @@ def createColumnConciliacao(data):
   return columnConciliacao
 
 def verifyMl(data): 
-  return data['Valor da antecipação'] if data['Método de pagamento'] == 'Transferência' else data['Comissão ML por parcela']
+  return data[Constants.DATA_KEY_ML_COMMISSION] if data[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_TRANSFERENCIA else data[Constants.DATA_KEY_ML_COMMISSION]
 
 def verifyValorBruto(data): 
-  return data['Valor líquido da parcela'] if data['Método de pagamento'] == 'Transferência' else data['Valor bruto da parcela']
+  return data[Constants.DATA_KEY_NET_VALUE] if data[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_TRANSFERENCIA else data[Constants.DATA_KEY_GROSS_AMOUNT]
 
 def calcPorcentegeValue(value, total):
   return round((value/total) * 100, 2)
 
-DATA_PATH = './Data/planilha_de_repasse.xlsx'
-data = pd.read_excel(DATA_PATH)
-dataSheets = pd.DataFrame(data)
-
-dataSheets['Conciliação'] = createColumnConciliacao(dataSheets)
-
-selectionTranferPayment = dataSheets['Método de pagamento'] == 'Transferência'
-
-dataSheets['Comissão ML por parcela'] = dataSheets.apply(verifyMl, axis=1)
-dataSheets['Valor bruto da parcela'] = dataSheets.apply(verifyValorBruto, axis=1)
-
-print(dataSheets[[
-  'Data da transação',
-  'ID do pedido Seller',
-  'Método de pagamento', 
-  'Comissão ML por parcela',
-  'Valor bruto da parcela',
-  '% Comissão',
-  'Conciliação',
+def printDataFrame(data):
+  print(data[[
+  Constants.DATA_KEY_TRANSACTION_DATE,
+  Constants.DATA_KEY_ID_SELLER,
+  Constants.DATA_KEY_PAYMENT_WAY, 
+  Constants.DATA_KEY_ML_COMMISSION,
+  Constants.DATA_KEY_GROSS_AMOUNT,
+  Constants.DATA_KEY_COMMISSION,
+  Constants.DATA_KEY_CONCILIATION,
   ]].head())
 
-print('\n__Info__')
+def printConciliacao(data, numberOfRows):
+  # Calculando o número de conciliação
+  infoConciliados = dataSheets[Constants.DATA_KEY_CONCILIATION] == Constants.CONCILIATION_OPTION_CONCILIATED
+  infoNumeroConciliados = dataSheets[infoConciliados].shape[0]
+  infoPorcentageConciliados = calcPorcentegeValue(infoNumeroConciliados, numberOfRows)
 
-numberOfRows = len(dataSheets)
-print(f'Número total de linhas: {numberOfRows}')
+  # Calculando o número de não conciliação
+  infoNotConciliados = dataSheets[Constants.DATA_KEY_CONCILIATION] == Constants.CONCILIATION_OPTION_NOT_CONCILIATED
+  infoNumeroNotConciliados = dataSheets[infoNotConciliados].shape[0]
+  infoPorcentageNotConciliados = calcPorcentegeValue(infoNumeroNotConciliados, numberOfRows)
 
-# Calculando o número de conciliação
-infoConciliados = dataSheets['Conciliação'] == 'Conciliado'
-infoNumeroConciliados = dataSheets[infoConciliados].shape[0]
-infoPorcentageConciliados = calcPorcentegeValue(infoNumeroConciliados, numberOfRows)
+  # Calculando o número de Retiradas
+  infoRetirada = dataSheets[Constants.DATA_KEY_CONCILIATION] == Constants.CONCILIATION_OPTION_WITHDRAWAL
+  infoNumeroRetirada = dataSheets[infoRetirada].shape[0]
+  infoPorcentageRetirada = calcPorcentegeValue(infoNumeroRetirada, numberOfRows)
 
-# Calculando o número de não conciliação
-infoNotConciliados = dataSheets['Conciliação'] == 'Não Conciliado'
-infoNumeroNotConciliados = dataSheets[infoNotConciliados].shape[0]
-infoPorcentageNotConciliados = calcPorcentegeValue(infoNumeroNotConciliados, numberOfRows)
+  # Calculando o número de Movitações
+  infoMovimentacao = dataSheets[Constants.DATA_KEY_CONCILIATION] == Constants.CONCILIATION_OPTION_MOVEMENT
+  infoNumeroMovimentacao = dataSheets[infoMovimentacao].shape[0]
+  infoPorcentageMovimentacao = calcPorcentegeValue(infoNumeroMovimentacao, numberOfRows)
 
-# Calculando o número de Retiradas
-infoRetirada = dataSheets['Conciliação'] == 'Retirada'
-infoNumeroRetirada = dataSheets[infoRetirada].shape[0]
-infoPorcentageRetirada = calcPorcentegeValue(infoNumeroRetirada, numberOfRows)
+  print('\nNúmero de ocorrências coluna Conciliação:')
+  print(
+  f'Conciliados - {infoNumeroConciliados} - {infoPorcentageConciliados}% ' + 
+  f'| Não Conciliados - {infoNumeroNotConciliados} - {infoPorcentageNotConciliados}% ' + 
+  f'| Retiradas - {infoNumeroRetirada} -  {infoPorcentageRetirada}% ' + 
+  f'| Movimentações - {infoNumeroMovimentacao} - {infoPorcentageMovimentacao}% '
+  )
 
-# Calculando o número de Movitações
-infoMovimentacao = dataSheets['Conciliação'] == 'Movimentação'
-infoNumeroMovimentacao = dataSheets[infoMovimentacao].shape[0]
-infoPorcentageMovimentacao = calcPorcentegeValue(infoNumeroMovimentacao, numberOfRows)
+def printPaymentWays(data, numberOfRows):
+  # Calculando o número de Boleto
+  infoPaymentWayBoleto = dataSheets[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_BOLETO
+  infoPaymentWayNumeroBoleto = dataSheets[infoPaymentWayBoleto].shape[0]
+  infoPaymentWayPorcentageBoleto = calcPorcentegeValue(infoPaymentWayNumeroBoleto, numberOfRows)
 
-print('\nNúmero de ocorrências coluna Conciliação:')
-print(
-f'Conciliados - {infoNumeroConciliados} - {infoPorcentageConciliados}% ' + 
-f'| Não Conciliados - {infoNumeroNotConciliados} - {infoPorcentageNotConciliados}% ' + 
-f'| Retiradas - {infoNumeroRetirada} -  {infoPorcentageRetirada}% ' + 
-f'| Movimentações - {infoNumeroMovimentacao} - {infoPorcentageMovimentacao}% '
-)
+  # Calculando o número de Cartão de Crédito
+  infoPaymentWayCard = dataSheets[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_CARD
+  infoPaymentWayNumeroCard = dataSheets[infoPaymentWayCard].shape[0]
+  infoPaymentWayPorcentageCard = calcPorcentegeValue(infoPaymentWayNumeroCard, numberOfRows)
 
-# Calculando o número de Boleto
-infoPaymentWayBoleto = dataSheets['Método de pagamento'] == 'Boleto'
-infoPaymentWayNumeroBoleto = dataSheets[infoPaymentWayBoleto].shape[0]
-infoPaymentWayPorcentageBoleto = calcPorcentegeValue(infoPaymentWayNumeroBoleto, numberOfRows)
+  # Calculando o número de Estorno
+  infoPaymentWayEstorno = dataSheets[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_ESTORNO
+  infoPaymentWayNumeroEstorno = dataSheets[infoPaymentWayEstorno].shape[0]
+  infoPaymentWayPorcentageEstorno = calcPorcentegeValue(infoPaymentWayNumeroEstorno, numberOfRows)
 
-# Calculando o número de Cartão de Crédito
-infoPaymentWayCard = dataSheets['Método de pagamento'] == 'Cartão de Crédito'
-infoPaymentWayNumeroCard = dataSheets[infoPaymentWayCard].shape[0]
-infoPaymentWayPorcentageCard = calcPorcentegeValue(infoPaymentWayNumeroCard, numberOfRows)
+  # Calculando o número de Transferência
+  infoPaymentWayTransferencia = dataSheets[Constants.DATA_KEY_PAYMENT_WAY] == Constants.PAYMENT_WAY_TRANSFERENCIA
+  infoPaymentWayNumeroTransferencia = dataSheets[infoPaymentWayTransferencia].shape[0]
+  infoPaymentWayPorcentageTransferencia = calcPorcentegeValue(infoPaymentWayNumeroTransferencia, numberOfRows)
 
-# Calculando o número de Estorno
-infoPaymentWayEstorno = dataSheets['Método de pagamento'] == 'Estorno'
-infoPaymentWayNumeroEstorno = dataSheets[infoPaymentWayEstorno].shape[0]
-infoPaymentWayPorcentageEstorno = calcPorcentegeValue(infoPaymentWayNumeroEstorno, numberOfRows)
+  print('\nNúmero de ocorrências coluna Método de pagamento:')
+  print(
+  f'Boleto - {infoPaymentWayNumeroBoleto} - {infoPaymentWayPorcentageBoleto}% ' + 
+  f'| Cartão de Crédito - {infoPaymentWayNumeroCard} - {infoPaymentWayPorcentageCard}% ' + 
+  f'| Estorno - {infoPaymentWayNumeroEstorno} - {infoPaymentWayPorcentageEstorno}% ' + 
+  f'| Transferência - {infoPaymentWayNumeroTransferencia} - {infoPaymentWayPorcentageTransferencia}% '
+  )
 
-# Calculando o número de Transferência
-infoPaymentWayTransferencia = dataSheets['Método de pagamento'] == 'Transferência'
-infoPaymentWayNumeroTransferencia = dataSheets[infoPaymentWayTransferencia].shape[0]
-infoPaymentWayPorcentageTransferencia = calcPorcentegeValue(infoPaymentWayNumeroTransferencia, numberOfRows)
+def printInfo(data): 
+  print('\n__Info__')
 
-print('\nNúmero de ocorrências coluna Método de pagamento:')
-print(
-f'Boleto - {infoPaymentWayNumeroBoleto} - {infoPaymentWayPorcentageBoleto}% ' + 
-f'| Cartão de Crédito - {infoPaymentWayNumeroCard} - {infoPaymentWayPorcentageCard}% ' + 
-f'| Estorno - {infoPaymentWayNumeroEstorno} - {infoPaymentWayPorcentageEstorno}% ' + 
-f'| Transferência - {infoPaymentWayNumeroTransferencia} - {infoPaymentWayPorcentageTransferencia}% '
-)
+  numberOfRows = len(dataSheets)
+  print(f'Número total de linhas: {numberOfRows}')
+
+  printConciliacao(data, numberOfRows)
+  printPaymentWays(data, numberOfRows)
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+
+# Import and read excel database
+data = pd.read_excel(Constants.DATA_PATH)
+dataSheets = pd.DataFrame(data).fillna(0)
+
+# Building column Conciliação
+dataSheets[Constants.DATA_KEY_CONCILIATION] = createColumnConciliacao(dataSheets)
+
+# Update columns "Comissão ML por parcela" and "Valor bruto da parcela"
+dataSheets[Constants.DATA_KEY_ML_COMMISSION] = dataSheets.apply(verifyMl, axis=1)
+dataSheets[Constants.DATA_KEY_GROSS_AMOUNT] = dataSheets.apply(verifyValorBruto, axis=1)
+
+# Print informations to the user
+printDataFrame(dataSheets)
+printInfo(dataSheets)
