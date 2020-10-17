@@ -13,7 +13,7 @@ Este projeto foi feito utilizando as seguintes tecnologias:
 
 ### Inicializar
 
-Dentro do diretório chamar o comando:
+Dentro do diretório raiz deste repositorio rodar o comando:
 
 ```sh
 $ python3 thirdStep.py
